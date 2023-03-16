@@ -2,7 +2,7 @@
   <v-app>
     <v-container>
       <!-- list of dogs -->
-      <v-card v-for="(src, i) in sources" :key="src" class="my-5">
+      <v-card v-for="(src, i) in source$" :key="src" class="my-5">
         <v-row v-if="src" class="mx-1">
           <!-- image -->
           <v-col cols="auto">
@@ -31,31 +31,52 @@
         </v-row>
       </v-card>
     </v-container>
+    <DragLoader @refresh="fetchDogs()" />
   </v-app>
 </template>
 
 <script>
 import Vue from 'vue'
 import { dogNames, mockDescription, url, numDogs } from '@/common/constants'
+import { EMPTY, BehaviorSubject, concat, of } from 'rxjs'
+import { ajax } from 'rxjs/ajax'
+import { catchError, map, delay, share, exhaustMap, tap } from 'rxjs/operators'
+import DragLoader from './components/DragLoaderStart.vue'
+
+export const dogAPI$ = ajax(url).pipe(
+  map(r => r.response.map(dog => dog.url)),
+  catchError(err => {
+    console.error(err)
+    return EMPTY
+  }),
+  delay(3000),
+  share(),
+)
+
+export const refresh$ = new BehaviorSubject(null)
 
 export default {
   data: () => ({
-    sources: new Array(numDogs).fill(null),
     names: new Array(numDogs).fill(null),
     loaded: [],
     nameIndices: new Set(),
     mockDescription,
   }),
+  components: {
+    DragLoader
+  },
 
-  created() {
-    fetch(url)
-      .then(r => r.json())
-      .then(dogs => {
-        setTimeout(() => {
-          this.sources = dogs.map(d => d.url)
-          this.names = this.names.map(this.getName)
-        }, 3000)
-      })
+  subscriptions() {
+    const source$ = refresh$.pipe(
+      exhaustMap(() => concat(of(new Array(numDogs).fill(null)), dogAPI$)),
+      tap(() => {
+        this.names = this.names.map(this.getName)
+      }),
+    )
+
+    return {
+      source$,
+    }
   },
 
   methods: {
@@ -71,6 +92,12 @@ export default {
 
     setLoaded(i) {
       Vue.set(this.loaded, i, true)
+    },
+
+    fetchDogs() {
+      this.nameIndices = new Set()
+      this.loaded = []
+      refresh$.next()
     },
   },
 }
