@@ -35,14 +35,18 @@
   </v-app>
 </template>
 
-<script>
+<script lang="js">
 import Vue from 'vue'
 import { dogNames, mockDescription, url, numDogs } from '@/common/constants'
 import { ajax } from 'rxjs/ajax'
 import { map, catchError, delay, share, exhaustMap, tap } from 'rxjs/operators'
 import { EMPTY, BehaviorSubject, concat, of } from 'rxjs'
 import DragLoader from '@/components/DragLoader'
+import { getCharacters } from 'rickmortyapi'
 
+
+const rick = getCharacters()
+console.log(rick)
 export const dogAPI$ = ajax(url).pipe(
   map(r => r.response.map(dog => dog.url)),
   catchError(err => {
@@ -87,6 +91,7 @@ export default {
         return this.getName()
       }
       this.nameIndices.add(index)
+      //this.getRick()
       return dogNames[index]
     },
 
@@ -98,6 +103,10 @@ export default {
       this.nameIndices = new Set()
       this.loaded = []
       refresh$.next()
+    },
+
+    async getRick() {
+      //console.log(rick)
     },
   },
 }
